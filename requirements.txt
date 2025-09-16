@@ -5,3 +5,4 @@ nselib
 pandas_market_calendars
 openpyxl
 xlrd
+yfinance
