@@ -11,7 +11,7 @@ from nselib import capital_market
 # -------------------------
 st.set_page_config(page_title="VWAP Settlement", layout="centered")
 
-st.title("📊 VWAP Settlement Tracker")
+st.title("📊 Settlement Tracker")
 st.write("This app fetches live data from TradingView and calculates VWAP for the selected stock.")
 
 # -------------------------
@@ -23,7 +23,7 @@ stock_list = list(capital_market.fno_equity_list()['symbol'])
 stock_name = st.selectbox("Enter Stock Symbol (e.g., 'UPL')",options=stock_list)
 market = st.selectbox("Select Market", ["NSE", "BSE"], index=0)
 
-run_button = st.button("Fetch VWAP")
+run_button = st.button("Fetch")
 username = 'YourTradingViewUsername'
 password = 'YourTradingViewPassword'
 tv = TvDatafeed(username, password)
