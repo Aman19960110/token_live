@@ -5,3 +5,5 @@ nselib
 pandas_market_calendars
 openpyxl
 xlrd
+yfinance
+git+https://github.com/rongardF/tvdatafeed.git
