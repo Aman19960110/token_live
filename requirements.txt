@@ -7,3 +7,5 @@ openpyxl
 xlrd
 yfinance
 git+https://github.com/rongardF/tvdatafeed.git
+pywalker
+quickjs
