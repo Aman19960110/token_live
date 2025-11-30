@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import zipfile
-import rarfile
 import io
 import plotly.express as px
 
@@ -185,22 +184,6 @@ if uploaded_files:
             except Exception as e:
                 st.error(f"Invalid zip file {uploaded.name}: {e}")
 
-        elif file_type == "rar":
-            st.write(f"Extracting RAR → {uploaded.name}")
-            try:
-                with rarfile.RarFile(fileobj=io.BytesIO(file_bytes)) as rf:
-                    for info in rf.infolist():
-                        name = info.filename
-                        if name.endswith(".txt"):
-                            st.write(f"Processing inside RAR → {name}")
-                            inner = rf.read(name)
-                            df = process_file_content(inner)
-                            if not df.empty:
-                                final_df = pd.concat([final_df, df], ignore_index=True)
-            except rarfile.RarCannotExec:
-                st.error("rarfile cannot find unrar/rar. Install 'unrar' to read RAR files.")
-            except Exception as e:
-                st.error(f"Invalid rar file {uploaded.name}: {e}")
 
     if final_df.empty:
         st.info("No valid data extracted.")
