@@ -199,7 +199,7 @@ if uploaded_files:
 # -------------------------
 if not final_df.empty:
 
-    st.subheader("🥧 Total PnL by Expiry (Plotly)")
+    st.subheader("🥧 Total PnL by Expiry ")
     pnl_by_expiry = final_df.groupby("expiry", as_index=False)["pnl"].sum()
     fig = px.pie(pnl_by_expiry, names="expiry", values="pnl", title="PnL Share by Expiry", hole=0.3)
     st.plotly_chart(fig, width="stretch")
