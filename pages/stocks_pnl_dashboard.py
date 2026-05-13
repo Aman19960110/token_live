@@ -90,9 +90,9 @@ def process_file_content(file_bytes):
                         net_quantity = int(pe_row['quantity'].iloc[0])
 
                         expense = round(
-                            (ce_price * 0.00055) +
-                            (pe_price * 0.001625) +
-                            (float(row['price']) * 0.00028118), 2
+                            (ce_price * 0.0005625) +
+                            (pe_price * 0.0020325) +
+                            (float(row['price']) * 0.00054), 2
                         )
 
                     else:  # CLOSE
@@ -111,9 +111,9 @@ def process_file_content(file_bytes):
                         net_quantity = int(pe_row['quantity'].iloc[0])
 
                         expense = round(
-                            (ce_price * 0.001625) +
-                            (pe_price * 0.00055) +
-                            (float(row['price']) * 0.00005618), 2
+                            (ce_price * 0.0020325) +
+                            (pe_price * 0.0005625) +
+                            (float(row['price']) * 0.00006), 2
                         )
 
                     collected_data.append({
