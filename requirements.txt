@@ -9,3 +9,4 @@ yfinance
 git+https://github.com/rongardF/tvdatafeed.git
 pygwalker
 tornado
+lxml
