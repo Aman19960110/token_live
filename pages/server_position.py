@@ -31,7 +31,7 @@ DEFAULT_HEADERS = {
 @dataclass
 class Credentials:
     username: str = "VAIB"
-    password: str = "anurag"
+    password: str = "123456"
 
 
 @dataclass
