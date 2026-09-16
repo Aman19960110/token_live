@@ -1,3 +1,4 @@
+# @title
 """Position reconciliation dashboard for RMSWEB reports.
 
 This module combines the fetcher, reconciliation helpers, and the Streamlit UI
@@ -119,45 +120,54 @@ def fetch(code: str, credentials: Optional[Credentials] = None) -> pd.DataFrame:
     """Convenience helper to log in and fetch a report's first table."""
     fetcher = PositionFetcher(credentials=credentials or Credentials())
     data = fetcher.fetch_report(code)
-    data.dropna(subset=['Symbol'], inplace=True)
+    data.dropna(subset=['Symbol'],inplace=True)
     return data
 
 
+
+
+
+
+
+
+
 class Position:
-    def __init__(self, position_fetcher):
-        self.position_fetcher = position_fetcher
+  def __init__(self,position_fetcher):
+    self.position_fetcher = position_fetcher
 
-    def get_cash_by_expiry(self, server_code):
-        data = self.position_fetcher.fetch_report(server_code)
-        cash = data.groupby('Exp Date').agg({'Net Value': 'sum'}).reset_index().rename(columns={'Net Value': 'Cash'})
-        return cash
+  def get_cash_by_expiry(self,server_code):
+    data = self.position_fetcher.fetch_report(server_code)
+    mask = data[(data['Type']!='FF')&(data['Symbol']!='NIFTY')&(data['Symbol']!='BANKNIFTY')&(data['Symbol']!='SENSEX')].copy()
+    cash = mask.groupby('Exp Date').agg({'Net Value':'sum'}).reset_index().rename(columns={'Net Value':'Cash'})
+    return cash
 
-    def get_cash_by_stock_per_expiry(self, server_code):
-        data = self.position_fetcher.fetch_report(server_code)
-        mask = data.pivot_table('Net Value', index=['Exp Date', 'Symbol'], columns='Type', aggfunc='sum').reset_index()
-        mask['cash_used'] = mask['CE'] + mask['PE']
-        return mask.sort_values('cash_used', ascending=False).reset_index()
+  def get_cash_by_stock_per_expiry(self,server_code):
+    data = self.position_fetcher.fetch_report(server_code)
+    mask = data.pivot_table('Net Value',index=['Exp Date','Symbol'],columns='Type',aggfunc='sum').reset_index()
+    mask['cash_used'] =  mask['CE'] + mask['PE']
+    return mask.sort_values('cash_used',ascending=False).reset_index()
 
-    def check_postion(self, server_code):
-        data = self.position_fetcher.fetch_report(server_code)
-        if 'FF' in data['Type'].unique():
-            mask = data.pivot_table('Net Qty', index=['Exp Date', 'Symbol'], columns='Type', aggfunc='sum').reset_index()
-            mask = mask.fillna(0)
-            pos = (abs(mask['CE'].sum()) == abs(mask['PE'].sum()) == abs(mask['FF'].sum()))
-            if pos:
-                return 'No MisMatch'
-            else:
-                return pos
-        else:
-            mask = data.pivot_table('Net Qty', index=['Exp Date', 'Symbol'], columns='Type', aggfunc='sum').reset_index()
-            mask['mismatch'] = (abs(mask['CE']) == abs(mask['PE']))
-            pos = mask[mask['mismatch'] == False]
-            if pos is None or pos.empty:
-                return 'No MisMatch'
-            else:
-                return pos
+  def check_postion(self,server_code):
+    data = self.position_fetcher.fetch_report(server_code)
+    if 'FF' in data['Type'].unique():
+      mask = data.pivot_table('Net Qty',index=['Exp Date','Symbol'],columns='Type',aggfunc='sum').reset_index()
+      mask = mask.fillna(0)
+      pos = (abs(mask['CE'].sum()) == abs(mask['PE'].sum()) == abs(mask['FF'].sum()))
+      if pos:
+        return 'No MisMatch'
+      else:
+        return pos
+    else:
+      mask = data.pivot_table('Net Qty',index=['Exp Date','Symbol'],columns='Type',aggfunc='sum').reset_index()
+      mask['mismatch'] = (abs(mask['CE']) == abs(mask['PE']))
+      pos = mask[mask['mismatch']==False]
+      if pos is None or pos.empty:
+        return 'No MisMatch'
+      else:
+        return pos
 
-    def get_exposuer(self, server_code):
-        data = self.position_fetcher.fetch_report(server_code)
-        exp = data[data['Type'] == 'FF']['Net Value'].sum() / 10000000
-        return round(exp, 2)
+  def get_exposuer(self,server_code):
+    data = self.position_fetcher.fetch_report(server_code)
+    exp = data[data['Type']=='FF']['Net Value'].sum()/10000000
+    return exp
+
