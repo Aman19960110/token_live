@@ -85,19 +85,85 @@ def resize_expiry(expiry):
     SS.texts = None; SS.ver += 1
 
 
-def load_files():
-    new, notes = [], []
-    for f in SS.get("up") or []:
-        text = f.getvalue().decode("utf-8")
-        rows = [m for m in (LINE.match(l) for l in text.splitlines() if l.strip()) if m]
-        if rows:
-            new.append({"name": Path(f.name).stem, "ce": int(rows[0].group(2)), "pe": int(rows[0].group(3)),
-                        "strike_format": "decimal2" if any("." in m.group(4) for m in rows) else "auto",
-                        "trailing_newline": text.endswith("\n"), "stocks": [m.group(1) for m in rows]})
-    if new:
-        before = sum(len(s["stocks"]) for s in new)
-        from_sheets(new)
-        SS.notes = [f"{before - len(SS.master)} repeated stock(s) removed (first sheet keeps it)."]
+def move_sheet_to_expiry(source, index, expiry_widget):
+    target = SS[expiry_widget]
+    if source == target:
+        return
+
+    source_cfg = SS.expiry_sheets[source]
+    sheet = source_cfg[index]
+    name = sheet["name"]
+    target_cfg = SS.expiry_sheets[target]
+    matching = next((i for i, existing in enumerate(target_cfg) if existing["name"] == name), None)
+    if matching is not None and target_cfg[matching] != sheet:
+        SS[expiry_widget] = source
+        SS.notes = [f"Cannot move {name} to {target}: a watchlist with that name has different settings. "
+                    "Rename one of the watchlists first."]
+        return
+
+    source_assign = SS.expiry_assign[source]
+    target_assign = SS.expiry_assign[target]
+    symbols = [symbol for symbol, owner in source_assign.items() if owner == name]
+    if matching is None:
+        target_cfg.append(copy.deepcopy(sheet))
+    for symbol in symbols:
+        source_assign[symbol] = ""
+        target_assign[symbol] = name
+
+    source_cfg.pop(index)
+    if not source_cfg:
+        source_cfg.append(blank(1))
+    SS[f"expiry_n_{source}"] = len(source_cfg)
+    SS[f"expiry_n_{target}"] = len(target_cfg)
+    sync_expiry_sheet_widgets(source)
+    sync_expiry_sheet_widgets(target)
+    SS.pop(f"up_{source}_{index}", None)
+    SS.pop(expiry_widget, None)
+    SS.notes = [f"Moved {name} and {len(symbols)} assigned stock(s) from {source} to {target}."]
+    SS.texts = None; SS.ver += 1
+
+
+def load_file_into_sheet(expiry, index):
+    key = f"up_{expiry}_{index}"
+    uploaded = SS.get(key)
+    if uploaded is None:
+        SS.notes = ["Choose a .txt watchlist beside the sheet settings first."]
+        return
+
+    text = uploaded.getvalue().decode("utf-8")
+    lines = [line for line in text.splitlines() if line.strip()]
+    rows = [LINE.match(line) for line in lines]
+    if not rows or any(row is None for row in rows):
+        SS.notes = [f"{uploaded.name} has no watchlist lines or contains an invalid line; nothing was loaded."]
+        return
+
+    cfg = SS.expiry_sheets[expiry]
+    sheet = cfg[index]
+    name = sheet["name"]
+    symbols = list(dict.fromkeys(row.group(1) for row in rows))
+    for symbol in symbols:
+        if symbol not in SS.master:
+            SS.master.append(symbol)
+            SS.assign[symbol] = ""
+            for assignments in SS.expiry_assign.values():
+                assignments[symbol] = ""
+
+    assignments = SS.expiry_assign[expiry]
+    for symbol, owner in list(assignments.items()):
+        if owner == name:
+            assignments[symbol] = ""
+    for symbol in symbols:
+        assignments[symbol] = name
+
+    sheet.update({
+        "ce": int(rows[0].group(2)),
+        "pe": int(rows[0].group(3)),
+        "strike_format": "decimal2" if any("." in row.group(4) for row in rows) else "auto",
+        "trailing_newline": text.endswith("\n"),
+    })
+    sync_expiry_sheet_widgets(expiry)
+    SS.notes = [f"Loaded {len(symbols)} stock(s) from {uploaded.name} into {name} for {expiry}."]
+    SS.texts = None; SS.ver += 1
 
 
 def add_master():
@@ -378,8 +444,6 @@ with st.sidebar:
         if not re.match(r"^\d+\.\d{2}$", settings["remap"]):
             st.error(f"REMAP% for {expiry} must look like 1.00")
             st.stop()
-    st.file_uploader("Load master list from existing .txt files", accept_multiple_files=True, type="txt", key="up")
-    st.button("Use uploaded files", on_click=load_files)
     st.button("Reset to default lists", on_click=reset)
 st.title("Watchlist Studio")
 for n in SS.notes:
@@ -400,7 +464,7 @@ for expiry, tab in zip(expiries, st.tabs(expiries)):
         cfg = SS.expiry_sheets[expiry]
         assign = SS.expiry_assign[expiry]
         for i, sheet in enumerate(cfg):
-            c = st.columns([2, 1, 1, 1.4, 1.4])
+            c = st.columns([1.5, 0.55, 0.55, 1.1, 1.1, 1.1, 2, 0.7])
             old = sheet["name"]
             sheet["name"] = c[0].text_input("File name", old, key=f"nm_{expiry}_{i}").strip()
             if sheet["name"] != old:
@@ -415,6 +479,13 @@ for expiry, tab in zip(expiries, st.tabs(expiries)):
                 help="auto: whole strikes as 2200, a stock with any decimal strike fully as 157.50")
             sheet["trailing_newline"] = c[4].checkbox(
                 "Trailing newline", sheet["trailing_newline"], key=f"tn_{expiry}_{i}")
+            expiry_widget = f"sheet_exp_{expiry}_{i}"
+            c[5].selectbox("Expiry", expiries, index=expiries.index(expiry), key=expiry_widget,
+                           on_change=move_sheet_to_expiry,
+                           args=(expiry, i, expiry_widget))
+            c[6].file_uploader("Upload watchlist", type="txt", key=f"up_{expiry}_{i}")
+            c[7].button("Load", on_click=load_file_into_sheet, args=(expiry, i),
+                        key=f"load_{expiry}_{i}")
         names = [sheet["name"] for sheet in cfg]
         b = st.columns([2, 1, 1.2, 3])
         tgt = b[0].selectbox("Assign shown stocks to", names + [NONE], key=f"tgt_{expiry}")
